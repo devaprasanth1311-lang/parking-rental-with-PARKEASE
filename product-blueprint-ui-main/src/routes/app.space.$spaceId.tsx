@@ -24,6 +24,8 @@ function SpaceDetailPage() {
   const [startTime, setStartTime] = useState("2026-04-22T09:00");
   const [endTime, setEndTime] = useState("2026-04-22T18:00");
   const [vehicle, setVehicle] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   // OTP modal state
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -33,6 +35,7 @@ function SpaceDetailPage() {
   const [otpError, setOtpError] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     apiFetch(`/parking/${spaceId}`)
@@ -69,11 +72,20 @@ function SpaceDetailPage() {
     return () => clearInterval(interval);
   }, [otpTimer]);
 
+  // Real-time clock for CCTV
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleSendOtp = async () => {
     setOtpSending(true);
     setOtpError("");
     try {
-      const resp = await apiFetch("/bookings/send-otp", { method: "POST" });
+      const resp = await apiFetch("/bookings/send-otp", { 
+        method: "POST",
+        body: JSON.stringify({ email: otpEmail })
+      });
       setOtpSentTo(resp.sentTo || "your registered contact");
       setShowOtpModal(true);
       setOtpTimer(300); // 5 minutes
@@ -90,7 +102,10 @@ function SpaceDetailPage() {
     setOtpError("");
     setOtpDigits(["", "", "", "", "", ""]);
     try {
-      const resp = await apiFetch("/bookings/send-otp", { method: "POST" });
+      const resp = await apiFetch("/bookings/send-otp", { 
+        method: "POST",
+        body: JSON.stringify({ email: otpEmail })
+      });
       setOtpSentTo(resp.sentTo || "your registered contact");
       setOtpTimer(300);
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
@@ -161,8 +176,25 @@ function SpaceDetailPage() {
   };
 
   const handleBook = () => {
+    setEmailError("");
     if (!vehicle) {
       alert("Please enter your vehicle model");
+      return;
+    }
+    if (!otpEmail) {
+      setEmailError("Please enter an email address");
+      return;
+    }
+    if (!/^[a-z]/.test(otpEmail)) {
+      setEmailError("Email must start with a lowercase letter");
+      return;
+    }
+    if (!otpEmail.includes('@')) {
+      setEmailError("Email must include an '@' symbol");
+      return;
+    }
+    if (!/^[a-z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(otpEmail)) {
+      setEmailError("Please enter a valid email address");
       return;
     }
     handleSendOtp();
@@ -246,10 +278,31 @@ function SpaceDetailPage() {
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Camera className="h-4 w-4 text-primary" /> CCTV live feed
             </div>
-            <div className="mt-3 aspect-video rounded-xl bg-foreground/90 text-center text-xs text-background">
-              <div className="flex h-full items-center justify-center">
-                <span className="inline-flex items-center gap-2 rounded-full bg-background/10 px-3 py-1">
+            <div className="mt-3 relative aspect-video overflow-hidden rounded-xl bg-black text-center text-xs text-background shadow-inner">
+              {/* Live Mobile Camera Feed */}
+              <img 
+                src="http://192.0.0.4:8080/video" 
+                className="h-full w-full object-cover opacity-80" 
+                alt="Live CCTV Feed"
+                onError={(e) => {
+                  // If camera is not reachable, we fall back to a dummy parking image
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=800&q=80";
+                }}
+              />
+
+              <div className="absolute top-4 right-4 z-10">
+                <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-white backdrop-blur-md">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> Live · Bay {space.id.slice(-4).toUpperCase()}
+                </span>
+              </div>
+              <div className="absolute bottom-4 left-4 z-10">
+                <span className="font-mono text-sm font-medium text-white/90 drop-shadow-md">
+                  {currentTime.toLocaleDateString()} {currentTime.toLocaleTimeString()}
+                </span>
+              </div>
+              <div className="absolute top-4 left-4 z-10">
+                <span className="font-mono text-xs font-bold tracking-widest text-white/70 drop-shadow-md">
+                  CAM-01
                 </span>
               </div>
             </div>
@@ -277,6 +330,27 @@ function SpaceDetailPage() {
               <div>
                 <Label className="text-xs">Vehicle Model</Label>
                 <Input placeholder="e.g. Maruti Swift" value={vehicle} onChange={e => setVehicle(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">OTP Verification Email</Label>
+                <div className="relative">
+                  <Input 
+                    type="email" 
+                    placeholder="e.g. user@example.com" 
+                    value={otpEmail} 
+                    onChange={e => {
+                      setOtpEmail(e.target.value);
+                      if (emailError) setEmailError("");
+                    }} 
+                    className={emailError ? "border-destructive focus-visible:ring-destructive" : ""}
+                  />
+                  {emailError && (
+                    <div className="absolute -top-8 left-0 z-10 rounded-md bg-destructive px-2 py-1 text-[10px] text-destructive-foreground shadow-sm animate-in fade-in zoom-in-95">
+                      {emailError}
+                      <div className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 bg-destructive"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -404,7 +478,7 @@ function SpaceDetailPage() {
               </div>
 
               <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                A unique OTP has been sent to your registered phone via SMS
+                A verification OTP has been sent to your email
               </p>
             </div>
           </div>

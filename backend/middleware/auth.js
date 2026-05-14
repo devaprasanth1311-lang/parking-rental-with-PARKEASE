@@ -18,7 +18,10 @@ exports.verifyToken = async (req, res, next) => {
 };
 
 exports.checkRole = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role))
+  console.log(`Checking role: user has '${req.user.role}', required: ${roles}`);
+  if (!roles.includes(req.user.role)) {
+    console.log('Role check failed! Returning Forbidden.');
     return res.status(403).json({ message: 'Forbidden' });
+  }
   next();
 };

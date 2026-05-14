@@ -41,16 +41,17 @@ function ListSpacePage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
 
   const handleSubmit = async () => {
     setLoading(true);
-    if (!otpVerified) {
-      alert("Please verify your phone number via OTP before submitting.");
+    if (!otp) {
+      alert("Please provide the OTP sent to your email.");
       setLoading(false);
       return;
     }
@@ -66,7 +67,8 @@ function ListSpacePage() {
     formData.append("type", type);
     formData.append("ownerName", ownerName);
     formData.append("ownerPhone", ownerPhone);
-    formData.append("phoneVerified", "true");
+    formData.append("email", ownerEmail);
+    formData.append("otp", otp);
     
     if (landProof) formData.append("landProof", landProof);
     if (nationalIdProof) formData.append("nationalIdProof", nationalIdProof);
@@ -194,57 +196,69 @@ function ListSpacePage() {
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label>Contact Phone Number</Label>
+                <Input placeholder="Enter your phone number" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>Email Address (For Verification)</Label>
                 <div className="flex gap-2">
-                  <Input placeholder="Enter your phone number" value={ownerPhone} onChange={e => { setOwnerPhone(e.target.value); setOtpVerified(false); setOtpSent(false); }} required disabled={otpVerified} />
+                  <div className="relative w-full">
+                    <Input 
+                      type="email" 
+                      placeholder="e.g. user@example.com" 
+                      value={ownerEmail} 
+                      onChange={e => { 
+                        setOwnerEmail(e.target.value); 
+                        setOtpSent(false); 
+                        if (emailError) setEmailError("");
+                      }} 
+                      className={emailError ? "border-destructive focus-visible:ring-destructive" : ""}
+                      required 
+                    />
+                    {emailError && (
+                      <div className="absolute -top-8 left-0 z-10 rounded-md bg-destructive px-2 py-1 text-[10px] text-destructive-foreground shadow-sm animate-in fade-in zoom-in-95 whitespace-nowrap">
+                        {emailError}
+                        <div className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 bg-destructive"></div>
+                      </div>
+                    )}
+                  </div>
                   <Button
                     type="button"
                     onClick={async () => {
-                      if (!ownerPhone) { setOtpError("Enter phone number first"); return; }
+                      setEmailError("");
+                      setOtpError("");
+                      if (!ownerEmail) { setEmailError("Enter email first"); return; }
+                      if (!/^[a-z]/.test(ownerEmail)) {
+                        setEmailError("Email must start with a lowercase letter"); return;
+                      }
+                      if (!ownerEmail.includes('@')) {
+                        setEmailError("Email must include an '@' symbol"); return;
+                      }
+                      if (!/^[a-z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(ownerEmail)) {
+                        setEmailError("Please enter a valid email address"); return;
+                      }
                       setOtpLoading(true);
                       setOtpError("");
                       try {
-                        await apiFetch("/auth/send-phone-otp", { method: "POST", body: JSON.stringify({ phone: ownerPhone }) });
+                        await apiFetch("/parking/send-otp", { method: "POST", body: JSON.stringify({ email: ownerEmail }) });
                         setOtpSent(true);
+                        alert("OTP sent to your email!");
                       } catch (err: any) {
                         setOtpError(err.message || "Failed to send OTP");
                       } finally { setOtpLoading(false); }
                     }}
-                    variant={otpVerified ? "default" : "secondary"}
+                    variant={otpSent ? "outline" : "secondary"}
                     className="shrink-0"
-                    disabled={otpLoading || otpVerified}
+                    disabled={otpLoading}
                   >
-                    {otpVerified ? "✓ Verified" : otpLoading ? "Sending..." : "Send OTP"}
+                    {otpLoading ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
                   </Button>
                 </div>
                 {otpError && <p className="text-xs text-destructive mt-1">{otpError}</p>}
               </div>
-              {otpSent && !otpVerified && (
+              {otpSent && (
                 <div className="space-y-1.5 md:col-span-2">
-                  <Label>Enter OTP sent to your phone</Label>
-                  <div className="flex gap-2">
-                    <Input placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} required />
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (!otp) return;
-                        setOtpLoading(true);
-                        setOtpError("");
-                        try {
-                          const result = await apiFetch("/auth/verify-phone-otp", { method: "POST", body: JSON.stringify({ phone: ownerPhone, otp }) });
-                          if (result.verified) {
-                            setOtpVerified(true);
-                          }
-                        } catch (err: any) {
-                          setOtpError(err.message || "Invalid OTP");
-                        } finally { setOtpLoading(false); }
-                      }}
-                      className="shrink-0"
-                      disabled={otpLoading}
-                    >
-                      {otpLoading ? "Verifying..." : "Verify"}
-                    </Button>
-                  </div>
-                  {otpError && <p className="text-xs text-destructive mt-1">{otpError}</p>}
+                  <Label>Enter OTP sent to your email</Label>
+                  <Input placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} required />
                 </div>
               )}
             </div>
@@ -257,9 +271,40 @@ function ListSpacePage() {
 
         {step === 3 && (
           <div className="space-y-5">
-            <h2 className="font-serif text-2xl">Add photos</h2>
-            <p className="text-sm text-muted-foreground">Upload clear photos of the bay.</p>
-            <Input type="file" multiple onChange={e => setPhotos(Array.from(e.target.files || []))} />
+            <h2 className="font-serif text-2xl">Add photos (Up to 5)</h2>
+            <p className="text-sm text-muted-foreground">Upload clear photos of the bay. You can add them one by one or select multiple at once.</p>
+            <Input 
+              type="file" 
+              multiple 
+              accept="image/*"
+              onChange={e => {
+                const newFiles = Array.from(e.target.files || []);
+                setPhotos(prev => {
+                  const combined = [...prev, ...newFiles];
+                  return combined.slice(0, 5);
+                });
+              }} 
+            />
+            {photos.length > 0 && (
+              <div className="mt-4 rounded-xl border border-border p-4 bg-surface/30">
+                <Label className="mb-3 block">Selected Photos ({photos.length}/5):</Label>
+                <div className="flex flex-wrap gap-2">
+                  {photos.map((p, i) => (
+                     <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs shadow-sm">
+                       <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                       <span className="truncate max-w-[120px] md:max-w-[180px]">{p.name}</span>
+                       <button 
+                         type="button" 
+                         onClick={() => setPhotos(photos.filter((_, idx) => idx !== i))} 
+                         className="ml-1 rounded-full bg-destructive/10 p-1 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                       >
+                         ✕
+                       </button>
+                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

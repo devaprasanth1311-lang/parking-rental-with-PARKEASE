@@ -35,50 +35,18 @@ exports.sendBookingOtp = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const phone = user.phone;
-    const email = user.email;
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required for OTP verification' });
 
-    if (!phone && !email) return res.status(400).json({ message: 'No phone or email on account' });
-
-    // ── PHONE OTP (preferred) ──
-    if (phone) {
-      const cleanPhone = phone.replace(/[\s\-\+]/g, '');
-
-      if (process.env.NODE_ENV === 'production' && process.env.MSG91_TEMPLATE_ID) {
-        // Production with MSG91: send real SMS
-        await msg91.sendOtp(cleanPhone);
-        bookingOtpStore.set(`booking_${req.user._id}`, {
-          provider: 'msg91',
-          phone: cleanPhone,
-          expiresAt: Date.now() + 5 * 60 * 1000,
-        });
-        console.log(`📱 MSG91 Booking OTP sent to ${cleanPhone}`);
-      } else {
-        // Dev mode or MSG91 not configured: generate real random OTP
-        const otp = generateOtp();
-        bookingOtpStore.set(`booking_${req.user._id}`, {
-          otp,
-          phone: cleanPhone,
-          expiresAt: Date.now() + 5 * 60 * 1000,
-        });
-        console.log(`\n╔══════════════════════════════════════════════╗`);
-        console.log(`║  🔐 BOOKING VERIFICATION OTP                 ║`);
-        console.log(`║  User:  ${user.username || user.email}        ║`);
-        console.log(`║  Phone: ${cleanPhone}                        ║`);
-        console.log(`║  OTP:   ${otp}                               ║`);
-        console.log(`║  ⏱️  Expires in 5 minutes                     ║`);
-        console.log(`╚══════════════════════════════════════════════╝\n`);
-      }
-
-      const maskedPhone = cleanPhone.replace(/(.{3}).+(.{2})$/, '$1****$2');
-      return res.json({ message: `OTP sent to ${maskedPhone}`, sentTo: maskedPhone });
+    // Validate email starts with lowercase and has @
+    if (!/^[a-z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      return res.status(400).json({ message: 'Email must start with a lowercase letter and be valid.' });
     }
 
-    // ── EMAIL OTP (fallback if no phone) ──
     const otp = generateOtp();
-
     bookingOtpStore.set(`booking_${req.user._id}`, {
       otp,
+      email,
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
@@ -91,28 +59,18 @@ exports.sendBookingOtp = async (req, res) => {
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:16px;">
             <div style="text-align:center;margin-bottom:24px;">
+              <img src="https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=600&q=80" alt="Parking" style="width:100%;border-radius:12px;margin-bottom:16px;" />
               <h1 style="color:#1e40af;font-size:28px;margin:0;">🅿️ ParkEase</h1>
             </div>
-            <h2 style="color:#1e293b;font-size:20px;">Booking Verification OTP</h2>
-            <p style="color:#64748b;">Use this one-time password to confirm your parking booking. It expires in <strong>5 minutes</strong>.</p>
-            <div style="background:#1e40af;color:white;text-align:center;font-size:36px;font-weight:bold;letter-spacing:12px;padding:20px;border-radius:12px;margin:24px 0;">
-              ${otp}
-            </div>
-            <p style="color:#94a3b8;font-size:12px;">If you didn't request this, please ignore this email.</p>
+            <p style="color:#1e293b;font-size:16px;line-height:1.5;text-align:center;">YOUR OTP <strong style="font-size:24px;color:#1e40af;">${otp}</strong> BOOKING PARKING SLOT WITH PARKEASE IS THIS AND DO NOT SHARE THIS FOR SECURITY CONCERNS</p>
           </div>
         `,
       });
     } else {
-      console.log(`\n╔══════════════════════════════════════════════╗`);
-      console.log(`║  🔐 BOOKING VERIFICATION OTP                 ║`);
-      console.log(`║  Email: ${email}                              ║`);
-      console.log(`║  OTP:   ${otp}                               ║`);
-      console.log(`║  ⏱️  Expires in 5 minutes                     ║`);
-      console.log(`╚══════════════════════════════════════════════╝\n`);
+      console.log(`\n🔑 BOOKING OTP for ${email}: ${otp}\n`);
     }
 
-    const maskedEmail = email.replace(/(.{2}).+(@.+)/, '$1***$2');
-    res.json({ message: `OTP sent to ${maskedEmail}`, sentTo: maskedEmail });
+    res.json({ message: `OTP sent to ${email}`, sentTo: email });
   } catch (err) {
     console.error('❌ Send Booking OTP Error:', err.message);
     res.status(500).json({ message: err.message });
@@ -134,26 +92,12 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
     }
 
-    // ── MSG91 verification (phone in production) ──
-    if (stored.provider === 'msg91') {
-      try {
-        const result = await msg91.verifyOtp(stored.phone, otp);
-        if (result.type === 'error') {
-          return res.status(400).json({ message: result.message || 'Invalid OTP' });
-        }
-        console.log(`✅ Booking OTP verified via MSG91 for user ${req.user._id}`);
-      } catch (err) {
-        const errMsg = err.response?.data?.message || err.message || 'OTP verification failed';
-        return res.status(400).json({ message: errMsg });
-      }
-    } else {
-      // ── Local verification ──
-      if (stored.otp !== otp) {
-        console.log(`❌ Invalid booking OTP: entered=${otp}, expected=${stored.otp}`);
-        return res.status(400).json({ message: 'Invalid OTP' });
-      }
-      console.log(`✅ Booking OTP verified locally for user ${req.user._id}`);
+    // ── Local verification ──
+    if (stored.otp !== otp) {
+      console.log(`❌ Invalid booking OTP: entered=${otp}, expected=${stored.otp}`);
+      return res.status(400).json({ message: 'Invalid OTP' });
     }
+    console.log(`✅ Booking OTP verified locally for user ${req.user._id}`);
 
     // OTP verified — clear it
     bookingOtpStore.delete(`booking_${req.user._id}`);

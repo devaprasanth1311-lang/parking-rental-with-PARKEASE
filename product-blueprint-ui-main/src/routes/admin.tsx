@@ -58,6 +58,12 @@ function AdminDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("pr_token");
+    localStorage.removeItem("pr_user");
+    window.location.href = "/";
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-64 shrink-0 border-r border-border bg-sidebar md:block">
@@ -94,7 +100,7 @@ function AdminDashboard() {
           <div>
             <div className="font-serif text-lg capitalize">{tab}</div>
           </div>
-          <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">Logout</Link>
+          <button onClick={handleLogout} className="text-xs text-muted-foreground hover:text-foreground">Logout</button>
         </header>
 
         <div className="p-5 md:p-8">

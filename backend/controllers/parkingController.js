@@ -1,6 +1,67 @@
 // backend/controllers/parkingController.js
 const ParkingSpace = require('../models/ParkingSpace');
 const { predictVehicleSize, sizeOrder, canFit } = require('../config/vehicleDatabase');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+const parkingOtpStore = new Map();
+
+const getTransporter = () => nodemailer.createTransport({
+  host:   process.env.SMTP_HOST   || 'smtp.gmail.com',
+  port:   parseInt(process.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+function generateOtp() {
+  return crypto.randomInt(100000, 999999).toString();
+}
+
+exports.sendParkingOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Validate email starts with lowercase and has @
+    if (!/^[a-z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      return res.status(400).json({ message: 'Email must start with a lowercase letter and be valid.' });
+    }
+
+    const otp = generateOtp();
+    parkingOtpStore.set(`parking_${req.user._id}`, {
+      otp,
+      email,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    if (process.env.SMTP_USER && !process.env.SMTP_USER.includes('your_email')) {
+      const transporter = getTransporter();
+      await transporter.sendMail({
+        from: `"ParkEase" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Driveway Registration OTP — ParkEase',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:16px;">
+            <div style="text-align:center;margin-bottom:24px;">
+              <img src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=600&q=80" alt="Driveway" style="width:100%;border-radius:12px;margin-bottom:16px;" />
+              <h1 style="color:#1e40af;font-size:28px;margin:0;">🅿️ ParkEase</h1>
+            </div>
+            <p style="color:#1e293b;font-size:16px;line-height:1.5;">YOUR OTP <strong style="font-size:24px;color:#1e40af;">${otp}</strong> for adding driveway WITH PARKEASE IS THIS AND DO NOT SHARE THIS FOR SECURITY CONCERNS</p>
+          </div>
+        `,
+      });
+    } else {
+      console.log(`\n🔑 PARKING OTP for ${email}: ${otp}\n`);
+    }
+
+    res.json({ message: `OTP sent to ${email}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 exports.createSpace = async (req, res) => {
   try {
@@ -23,6 +84,22 @@ exports.createSpace = async (req, res) => {
     if (!landProofFile || !nationalIdProofFile || !ownerPhotoFile) {
         return res.status(400).json({ message: "All document proofs and photos are required" });
     }
+
+    const otp = req.body.otp;
+    const email = req.body.email; // we store this email as ownerEmail
+    
+    if (!otp) return res.status(400).json({ message: 'OTP is required to verify email' });
+    
+    const stored = parkingOtpStore.get(`parking_${req.user._id}`);
+    if (!stored || stored.otp !== otp || stored.email !== email) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+    if (Date.now() > stored.expiresAt) {
+      parkingOtpStore.delete(`parking_${req.user._id}`);
+      return res.status(400).json({ message: 'OTP expired' });
+    }
+    
+    parkingOtpStore.delete(`parking_${req.user._id}`);
 
     let parsedSlotSizes = [];
     if (slotSizes) {

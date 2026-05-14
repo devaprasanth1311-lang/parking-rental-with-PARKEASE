@@ -21,7 +21,7 @@ export function SpaceCard({ space }: { space: ParkingSpace }) {
           <Badge className="border-0 bg-background/90 text-foreground backdrop-blur">
             {space.type}
           </Badge>
-          {space.amenities.includes("EV Charger") && (
+          {(space.amenities || []).includes("EV Charger") && (
             <Badge className="border-0 bg-success/90 text-success-foreground">
               <Zap className="mr-1 h-3 w-3" /> EV
             </Badge>
@@ -48,7 +48,7 @@ export function SpaceCard({ space }: { space: ParkingSpace }) {
           {space.area}, {space.city} · {space.distanceKm} km
         </div>
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-          {space.amenities.includes("CCTV") && (
+          {(space.amenities || []).includes("CCTV") && (
             <span className="inline-flex items-center gap-1">
               <Shield className="h-3 w-3" /> CCTV
             </span>

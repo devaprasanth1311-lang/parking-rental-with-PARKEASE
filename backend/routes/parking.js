@@ -8,6 +8,7 @@ router.get('/',              ctrl.getApprovedSpaces);
 router.get('/predict-size',  ctrl.predictSize);
 router.get('/my-spaces',     verifyToken, ctrl.getOwnerSpaces);
 router.get('/:id',           ctrl.getSpaceById);
+router.post('/send-otp',     verifyToken, ctrl.sendParkingOtp);
 router.post('/',             verifyToken, upload.fields([
   { name: 'photos', maxCount: 8 },
   { name: 'landProof', maxCount: 1 },
