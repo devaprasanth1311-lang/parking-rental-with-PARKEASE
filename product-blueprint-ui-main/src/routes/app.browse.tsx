@@ -25,6 +25,8 @@ function BrowsePage() {
   const [priceMax, setPriceMax] = useState(100);
   const [types, setTypes] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
 
   const [vehicleModel, setVehicleModel] = useState("");
   const [searchedVehicle, setSearchedVehicle] = useState("");
@@ -32,7 +34,12 @@ function BrowsePage() {
   useEffect(() => {
     if (!searchedVehicle) return;
     
-    apiFetch(`/parking?vehicleModel=${encodeURIComponent(searchedVehicle)}`).then((data) => {
+    let url = `/parking?vehicleModel=${encodeURIComponent(searchedVehicle)}`;
+    if (userLat && userLng) {
+      url += `&lat=${userLat}&lng=${userLng}`;
+    }
+
+    apiFetch(url).then((data) => {
       const spacesArray = data.spaces || data;
       setSpaces(spacesArray.map((s: any) => ({
         id: s._id,
@@ -51,11 +58,11 @@ function BrowsePage() {
         vehicleTypes: ["Car", "Bike", "SUV", "EV"],
         amenities: ["CCTV", "Gated compound"],
         available: s.isAvailable,
-        distanceKm: 1.0,
+        distanceKm: s.distanceKm ? Number(s.distanceKm.toFixed(1)) : 1.0,
         description: s.description || "",
       })));
     }).catch(console.error);
-  }, [searchedVehicle]);
+  }, [searchedVehicle, userLat, userLng]);
 
   const filtered = useMemo(() => {
     return spaces.filter((s) => {
@@ -98,6 +105,26 @@ function BrowsePage() {
             required
           />
         </div>
+        <Button 
+          variant={userLat ? "default" : "outline"}
+          onClick={() => {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setUserLat(pos.coords.latitude);
+                  setUserLng(pos.coords.longitude);
+                  alert("Location retrieved successfully! Now sorting by distance.");
+                },
+                (err) => alert("Failed to get location: " + err.message)
+              );
+            } else {
+              alert("Geolocation is not supported by your browser.");
+            }
+          }}
+          className="rounded-xl border-dashed"
+        >
+          <MapPin className="mr-2 h-4 w-4" /> {userLat ? "Location Active" : "Use My Location"}
+        </Button>
         <Button onClick={() => setSearchedVehicle(vehicleModel)} size="lg" className="rounded-xl">
           Search
         </Button>

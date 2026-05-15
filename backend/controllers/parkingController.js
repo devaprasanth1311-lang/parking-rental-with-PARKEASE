@@ -104,6 +104,22 @@ exports.createSpace = async (req, res) => {
     let parsedSlotSizes = [];
     if (slotSizes) {
       try { parsedSlotSizes = JSON.parse(slotSizes); } catch { parsedSlotSizes = []; }
+    } else if (req.body.spaceLength && req.body.spaceWidth) {
+       let category = 'medium';
+       const w = parseFloat(req.body.spaceWidth);
+       const l = parseFloat(req.body.spaceLength);
+       if (w >= 10 && l >= 18) category = 'extra-large';
+       else if (w >= 9 && l >= 16) category = 'large';
+       else if (w >= 8 && l >= 14) category = 'medium-large';
+       else if (w >= 6 && l >= 12) category = 'medium';
+       else category = 'small';
+
+       parsedSlotSizes = [{
+         category,
+         count: parseInt(totalSpots) || 1,
+         widthFt: w,
+         lengthFt: l
+       }];
     }
 
     const space = await ParkingSpace.create({
@@ -137,10 +153,22 @@ exports.createSpace = async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // Browse approved spaces with vehicle-size-based optimal ordering
 exports.getApprovedSpaces = async (req, res) => {
   try {
-    const { minPrice, maxPrice, address, available, vehicleModel, vehicleType } = req.query;
+    const { minPrice, maxPrice, address, available, vehicleModel, vehicleType, lat, lng } = req.query;
     const filter = { isApproved: true, approvalStatus: 'approved' };
     if (available === 'true') filter.isAvailable = true;
     if (minPrice || maxPrice) {
@@ -152,34 +180,56 @@ exports.getApprovedSpaces = async (req, res) => {
 
     let spaces = await ParkingSpace.find(filter).populate('ownerId', 'username email phone');
 
-    // If vehicle info provided, sort by best-fit (not first-come-first-serve)
-    if (vehicleModel || vehicleType) {
-      const predicted = predictVehicleSize(vehicleModel, vehicleType);
-      const vehicleSizeOrder = sizeOrder[predicted.size] || 2;
+    // Attach distance if lat/lng provided
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    let spacesWithDistance = spaces.map(s => {
+      const spaceObj = s.toObject();
+      if (userLat && userLng && s.location && s.location.lat && s.location.lng) {
+        spaceObj.distanceKm = getDistanceFromLatLonInKm(userLat, userLng, s.location.lat, s.location.lng);
+      } else {
+        spaceObj.distanceKm = null;
+      }
+      return spaceObj;
+    });
 
-      // Filter: only spaces that have slots big enough
-      spaces = spaces.filter(space => {
+    let predicted = null;
+    let vehicleSizeOrder = 2;
+
+    if (vehicleModel || vehicleType) {
+      predicted = predictVehicleSize(vehicleModel, vehicleType);
+      vehicleSizeOrder = sizeOrder[predicted.size] || 2;
+
+      spacesWithDistance = spacesWithDistance.filter(space => {
         if (!space.slotSizes || space.slotSizes.length === 0) return true; // legacy spaces
         return space.slotSizes.some(slot => canFit(slot.category, predicted.size) && slot.count > 0);
       });
+    }
 
-      // Sort: best-fit first (smallest adequate slot)
-      spaces.sort((a, b) => {
+    spacesWithDistance.sort((a, b) => {
+      // 1. If distance is known, sort by distance first
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      
+      // 2. Otherwise sort by best-fit size
+      if (predicted) {
         const aSlots = (a.slotSizes || []).filter(s => canFit(s.category, predicted.size));
         const bSlots = (b.slotSizes || []).filter(s => canFit(s.category, predicted.size));
         const aBestFit = aSlots.length > 0 ? Math.min(...aSlots.map(s => sizeOrder[s.category] || 5)) : 5;
         const bBestFit = bSlots.length > 0 ? Math.min(...bSlots.map(s => sizeOrder[s.category] || 5)) : 5;
-        // Prefer the slot closest to vehicle size (best fit)
         const aDiff = Math.abs(aBestFit - vehicleSizeOrder);
         const bDiff = Math.abs(bBestFit - vehicleSizeOrder);
         return aDiff - bDiff;
-      });
+      }
+      return 0;
+    });
 
-      // Attach predicted vehicle info to response
-      return res.json({ spaces, vehicleInfo: predicted });
+    if (predicted) {
+      return res.json({ spaces: spacesWithDistance, vehicleInfo: predicted });
     }
 
-    res.json({ spaces });
+    res.json({ spaces: spacesWithDistance });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 

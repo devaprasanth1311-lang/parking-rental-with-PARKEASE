@@ -7,9 +7,11 @@ ParkEase is a comprehensive, full-stack web application designed to connect home
 ## 🌟 Key Features
 
 *   **Role-Based Access Control:** Secure portals with dedicated functionalities for Admins (approval workflows) and standard Users (hosts/renters).
-*   **Space Management:** Seamlessly list domestic driveways with up to 5 photo uploads, custom pricing, amenities, and dynamic status tracking.
-*   **Secure Booking System:** Mandatory real-time SMS OTP verification (powered by MSG91) before confirming any parking reservation to prevent fraud.
-*   **Live CCTV Demo Integration:** Ability to connect a mobile phone as an IP camera to stream a live security feed directly onto the parking space details page.
+*   **AI Smart Space Optimization:** Employs an intelligent size-matching algorithm that categorizes vehicles (from bikes to trucks) and automatically allocates the best-fitting driveway space based on exact physical dimensions.
+*   **Geolocation & Distance Sorting:** Native HTML5 GPS integration allows drivers to fetch their live coordinates and sorts available parking spaces dynamically using the Haversine distance formula.
+*   **Live CCTV Integration:** Homeowners can register their IP cameras, providing drivers with a live MJPEG stream exclusively during active booking hours.
+*   **Space Management:** Seamlessly list domestic driveways with exact physical dimensions, up to 5 photo uploads, custom pricing, amenities, and dynamic status tracking.
+*   **Secure Booking System:** Mandatory real-time Email OTP verification before confirming any parking reservation to prevent fraud.
 *   **Admin Dashboard:** Centralized hub to approve/reject new parking listings and monitor overall platform activity.
 *   **Owner/User Dashboard:** Dedicated interfaces to manage personal listings, view incoming bookings, and monitor history.
 
@@ -93,12 +95,11 @@ To showcase the live security camera feature using your own smartphone:
    *   iOS: Install **"Live Reporter"**.
 2. **Connect to Wi-Fi:** Ensure your smartphone and your development PC are connected to the **exact same Wi-Fi network**.
 3. **Start the Server:** Open the app on your phone and tap "Start Server". Note the IP address shown on your screen (e.g., `http://192.168.1.5:8080`).
-4. **Update the App:** 
-   *   Navigate to `product-blueprint-ui-main/src/routes/app.space.$spaceId.tsx`.
-   *   Scroll down to the CCTV live feed section (around line 260).
-   *   Locate the `<img src="http://192.0.0.4:8080/video" />` tag.
-   *   Replace the IP address in the `src` attribute with the one from your phone (make sure to keep `/video` at the end).
-5. **View the Feed:** Open the details page of any listed parking space in the app. Your phone's live camera feed will appear seamlessly integrated into the dashboard!
+4. **Register the Camera:** 
+   *   Log in to ParkEase as a Homeowner and go to "List your space".
+   *   In **Step 2 (Describe the space)**, enter the IP address URL shown on your phone (e.g., `http://192.168.1.5:8080/video`) into the "CCTV Camera IP/URL" input field.
+   *   Submit the form and wait for Admin approval.
+5. **View the Feed:** When a user books that specific space, the live CCTV feed will automatically become active on their "My Bookings" page precisely during their booked time slot!
 
 ---
 

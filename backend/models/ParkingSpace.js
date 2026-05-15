@@ -24,6 +24,7 @@ const parkingSpaceSchema = new mongoose.Schema({
     category: { type: String, enum: ['small', 'medium', 'medium-large', 'large', 'extra-large'] },
     count:    { type: Number, default: 1 },
     widthFt:  { type: Number, default: 7 },
+    lengthFt: { type: Number, default: 15 },
   }],
   pricePerHour:   { type: Number, required: true },
   pricePerDay:    { type: Number },

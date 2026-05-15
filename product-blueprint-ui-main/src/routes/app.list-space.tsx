@@ -43,6 +43,11 @@ function ListSpacePage() {
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [cctvUrl, setCctvUrl] = useState("");
+  const [spaceLength, setSpaceLength] = useState("15");
+  const [spaceWidth, setSpaceWidth] = useState("8");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -55,6 +60,11 @@ function ListSpacePage() {
       setLoading(false);
       return;
     }
+    if (!lat || !lng) {
+      alert("Please pinpoint your exact location in Step 1 using GPS.");
+      setLoading(false);
+      return;
+    }
 
     const formData = new FormData();
     formData.append("title", title);
@@ -62,6 +72,8 @@ function ListSpacePage() {
     formData.append("address", address);
     formData.append("city", city);
     formData.append("landmark", landmark);
+    formData.append("lat", lat.toString());
+    formData.append("lng", lng.toString());
     formData.append("pricePerHour", pricePerHour);
     formData.append("pricePerDay", pricePerDay);
     formData.append("type", type);
@@ -69,6 +81,9 @@ function ListSpacePage() {
     formData.append("ownerPhone", ownerPhone);
     formData.append("email", ownerEmail);
     formData.append("otp", otp);
+    formData.append("spaceLength", spaceLength);
+    formData.append("spaceWidth", spaceWidth);
+    if (cctvUrl) formData.append("cctvUrl", cctvUrl);
     
     if (landProof) formData.append("landProof", landProof);
     if (nationalIdProof) formData.append("nationalIdProof", nationalIdProof);
@@ -160,6 +175,33 @@ function ListSpacePage() {
                 <Label>Landmark</Label>
                 <Input placeholder="Near Rajiv Chowk Metro" value={landmark} onChange={e => setLandmark(e.target.value)} />
               </div>
+              <div className="space-y-1.5 md:col-span-2 mt-2">
+                <Button 
+                  type="button" 
+                  variant={lat ? "default" : "outline"}
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setLat(pos.coords.latitude);
+                          setLng(pos.coords.longitude);
+                          alert("Exact coordinates captured!");
+                        },
+                        (err) => alert("Failed to get location: " + err.message)
+                      );
+                    } else {
+                      alert("Geolocation is not supported by your browser.");
+                    }
+                  }}
+                  className="w-full border-dashed"
+                >
+                  <MapPin className="mr-2 h-4 w-4" /> 
+                  {lat && lng ? `Location Captured (${lat.toFixed(4)}, ${lng.toFixed(4)})` : "Pinpoint exact location (GPS)"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Required to help drivers find your driveway and to calculate distance dynamically.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -177,6 +219,14 @@ function ListSpacePage() {
                 <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={type} onChange={e => setType(e.target.value)}>
                   <option>House Parking</option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Driveway Length (in Feet)</Label>
+                <Input type="number" placeholder="e.g. 15" value={spaceLength} onChange={e => setSpaceLength(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Driveway Width (in Feet)</Label>
+                <Input type="number" placeholder="e.g. 8" value={spaceWidth} onChange={e => setSpaceWidth(e.target.value)} required />
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label>Owner Name</Label>
@@ -197,6 +247,11 @@ function ListSpacePage() {
               <div className="space-y-1.5 md:col-span-2">
                 <Label>Contact Phone Number</Label>
                 <Input placeholder="Enter your phone number" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>CCTV Camera IP/URL (For live tracking)</Label>
+                <Input placeholder="e.g. http://192.168.1.15:8080/video" value={cctvUrl} onChange={e => setCctvUrl(e.target.value)} />
+                <p className="text-xs text-muted-foreground mt-1">If using IP Webcam on Android, enter the video stream URL here.</p>
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label>Email Address (For Verification)</Label>
