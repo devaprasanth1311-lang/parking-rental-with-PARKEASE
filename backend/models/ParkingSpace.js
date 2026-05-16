@@ -14,7 +14,9 @@ const parkingSpaceSchema = new mongoose.Schema({
   phoneVerified: { type: Boolean, default: false },
   location: {
     address:  { type: String, required: true },
+    area:     { type: String, default: '' },
     city:     { type: String, default: '' },
+    state:    { type: String, default: '' },
     pincode:  { type: String, default: '' },
     landmark: { type: String, default: '' },
     lat:      { type: Number, default: 0 },

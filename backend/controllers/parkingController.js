@@ -65,7 +65,7 @@ exports.sendParkingOtp = async (req, res) => {
 
 exports.createSpace = async (req, res) => {
   try {
-    const { title, description, address, city, pincode, landmark, lat, lng,
+    const { title, description, address, area, city, state, pincode, landmark, lat, lng,
             pricePerHour, pricePerDay, cctvUrl, totalSpots, ownerName, ownerPhone,
             phoneVerified, slotSizes } = req.body;
     const photos = req.files && req.files.photos
@@ -135,7 +135,9 @@ exports.createSpace = async (req, res) => {
       phoneVerified: phoneVerified === 'true' || phoneVerified === true,
       location: {
         address,
+        area: area || '',
         city: city || '',
+        state: state || '',
         pincode: pincode || '',
         landmark: landmark || '',
         lat: parseFloat(lat || 0),

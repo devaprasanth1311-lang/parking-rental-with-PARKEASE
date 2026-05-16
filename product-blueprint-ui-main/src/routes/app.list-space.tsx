@@ -28,7 +28,10 @@ function ListSpacePage() {
 
   // Form State
   const [address, setAddress] = useState("");
+  const [area, setArea] = useState("");
   const [city, setCity] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [pincode, setPincode] = useState("");
   const [landmark, setLandmark] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("House Parking");
@@ -70,7 +73,10 @@ function ListSpacePage() {
     formData.append("title", title);
     formData.append("description", description);
     formData.append("address", address);
+    formData.append("area", area);
     formData.append("city", city);
+    formData.append("state", stateName);
+    formData.append("pincode", pincode);
     formData.append("landmark", landmark);
     formData.append("lat", lat.toString());
     formData.append("lng", lng.toString());
@@ -163,18 +169,6 @@ function ListSpacePage() {
           <div className="space-y-5">
             <h2 className="font-serif text-2xl">Where is it?</h2>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5 md:col-span-2">
-                <Label>Full address</Label>
-                <Input placeholder="House 12, Block A, Connaught Place" value={address} onChange={e => setAddress(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>City</Label>
-                <Input placeholder="New Delhi" value={city} onChange={e => setCity(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Landmark</Label>
-                <Input placeholder="Near Rajiv Chowk Metro" value={landmark} onChange={e => setLandmark(e.target.value)} />
-              </div>
               <div className="space-y-1.5 md:col-span-2 mt-2">
                 <Button 
                   type="button" 
@@ -182,10 +176,26 @@ function ListSpacePage() {
                   onClick={() => {
                     if (navigator.geolocation) {
                       navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                          setLat(pos.coords.latitude);
-                          setLng(pos.coords.longitude);
-                          alert("Exact coordinates captured!");
+                        async (pos) => {
+                          const latitude = pos.coords.latitude;
+                          const longitude = pos.coords.longitude;
+                          setLat(latitude);
+                          setLng(longitude);
+                          
+                          try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+                            const data = await res.json();
+                            if (data && data.address) {
+                              setAddress(data.address.road || data.address.pedestrian || "");
+                              setArea(data.address.suburb || data.address.neighbourhood || data.address.residential || "");
+                              setCity(data.address.city || data.address.town || data.address.county || "");
+                              setStateName(data.address.state || "");
+                              setPincode(data.address.postcode || "");
+                            }
+                            alert("Exact coordinates captured & address auto-filled!");
+                          } catch (err) {
+                            alert("Coordinates captured, but auto-fill failed. Please enter details manually.");
+                          }
                         },
                         (err) => alert("Failed to get location: " + err.message)
                       );
@@ -196,11 +206,36 @@ function ListSpacePage() {
                   className="w-full border-dashed"
                 >
                   <MapPin className="mr-2 h-4 w-4" /> 
-                  {lat && lng ? `Location Captured (${lat.toFixed(4)}, ${lng.toFixed(4)})` : "Pinpoint exact location (GPS)"}
+                  {lat && lng ? `Location Captured (${lat.toFixed(4)}, ${lng.toFixed(4)})` : "Step 1: Auto-fetch my exact location (GPS)"}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Required to help drivers find your driveway and to calculate distance dynamically.
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Click to auto-fill fields and capture exact distance coordinates.
                 </p>
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>House No. & Street Name</Label>
+                <Input placeholder="e.g. 12, Block A, Connaught Place" value={address} onChange={e => setAddress(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Area / Locality</Label>
+                <Input placeholder="e.g. Rajiv Chowk" value={area} onChange={e => setArea(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>City</Label>
+                <Input placeholder="New Delhi" value={city} onChange={e => setCity(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>State</Label>
+                <Input placeholder="Delhi" value={stateName} onChange={e => setStateName(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Pincode / Zip Code</Label>
+                <Input placeholder="110001" value={pincode} onChange={e => setPincode(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>Landmark (Optional)</Label>
+                <Input placeholder="Near Metro Gate 2" value={landmark} onChange={e => setLandmark(e.target.value)} />
               </div>
             </div>
           </div>

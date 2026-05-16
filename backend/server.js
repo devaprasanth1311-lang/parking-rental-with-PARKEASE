@@ -18,6 +18,7 @@ app.use('/api/parking', require('./routes/parking'));
 app.use('/api/bookings', require('./routes/booking'));
 app.use('/api/transactions', require('./routes/transaction'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/chat', require('./routes/chat'));
 
 mongoose
   .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/parking-rental')
