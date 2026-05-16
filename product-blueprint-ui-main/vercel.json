@@ -2,10 +2,11 @@
     "rewrites": [
         {
             "source": "/(.*)",
-            "destination": "/"
+            "destination": "/index.html"
         }
     ],
     "buildCommand": "npm run build",
-    "outputDirectory": "dist/client",
-    "framework": null
+    "outputDirectory": "dist",
+    "cleanUrls": true,
+    "framework": "vite"
 }
