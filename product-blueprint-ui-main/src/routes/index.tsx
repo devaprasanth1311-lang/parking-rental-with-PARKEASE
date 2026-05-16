@@ -7,7 +7,7 @@ import { SpaceCard } from "@/components/SpaceCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cities } from "@/lib/mock-data";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, BASE_URL } from "@/lib/api";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -37,7 +37,7 @@ function LandingPage() {
         area: s.location?.landmark || "",
         city: s.location?.city || "",
         pricePerHour: s.pricePerHour,
-        image: s.photos?.[0] ? `http://localhost:5000${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
+        image: s.photos?.[0] ? `${BASE_URL}${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
         available: s.isAvailable,
         rating: 4.8,
         reviews: 0

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, BASE_URL } from "@/lib/api";
 
 export const Route = createFileRoute("/app/space/$spaceId")({
   component: SpaceDetailPage,
@@ -51,7 +51,7 @@ function SpaceDetailPage() {
           pricePerDay: data.pricePerDay || data.pricePerHour * 24,
           rating: 4.5,
           reviews: 0,
-          image: data.photos?.[0] ? `http://localhost:5000${data.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=1200&q=80",
+          image: data.photos?.[0] ? `${BASE_URL}${data.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=1200&q=80",
           type: "Driveway",
           amenities: ["CCTV", "Gated compound"],
           available: data.isAvailable,

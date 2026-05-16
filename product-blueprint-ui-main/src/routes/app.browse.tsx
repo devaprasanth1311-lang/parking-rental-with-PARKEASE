@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cities } from "@/lib/mock-data";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, BASE_URL } from "@/lib/api";
 
 export const Route = createFileRoute("/app/browse")({
   component: BrowsePage,
@@ -52,7 +52,7 @@ function BrowsePage() {
         pricePerDay: s.pricePerDay || s.pricePerHour * 24,
         rating: 4.5,
         reviews: 0,
-        image: s.photos?.[0] ? `http://localhost:5000${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
+        image: s.photos?.[0] ? `${BASE_URL}${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
         type: "House Parking",
         houseType: "Independent House",
         vehicleTypes: ["Car", "Bike", "SUV", "EV"],

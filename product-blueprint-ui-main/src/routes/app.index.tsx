@@ -5,7 +5,7 @@ import { SpaceCard } from "@/components/SpaceCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, BASE_URL } from "@/lib/api";
 
 export const Route = createFileRoute("/app/")({
   component: DashboardHome,
@@ -39,7 +39,7 @@ function DashboardHome() {
         area: item.location?.landmark || "",
         city: item.location?.city || "",
         pricePerHour: item.pricePerHour,
-        image: item.photos?.[0] ? `http://localhost:5000${item.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
+        image: item.photos?.[0] ? `${BASE_URL}${item.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=900&q=70",
         available: item.isAvailable,
         rating: 4.8,
         reviews: 0
@@ -221,7 +221,7 @@ function DashboardHome() {
                   {/* Image */}
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <img
-                      src={s.photos?.[0] ? `http://localhost:5000${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=600&q=70"}
+                      src={s.photos?.[0] ? `${BASE_URL}${s.photos[0]}` : "https://images.unsplash.com/photo-1590674899484-13e6a8fef8e4?auto=format&fit=crop&w=600&q=70"}
                       alt={s.title}
                       className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     />

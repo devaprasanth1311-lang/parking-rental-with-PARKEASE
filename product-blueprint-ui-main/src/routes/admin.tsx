@@ -4,7 +4,7 @@ import { LayoutDashboard, Users, ListChecks, CalendarCheck, TrendingUp, Search, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, BASE_URL } from "@/lib/api";
 
 export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
@@ -141,7 +141,7 @@ function Overview({ stats, pending, onApprove }: any) {
               <div className="flex-1">
                 <div className="text-sm font-medium">{s.title}</div>
                 <div className="text-xs text-muted-foreground">{s.location?.address}, {s.location?.city}</div>
-                {s.landProof && <a href={`http://localhost:5000${s.landProof}`} target="_blank" className="text-[10px] text-primary underline">View Proof</a>}
+                {s.landProof && <a href={`${BASE_URL}${s.landProof}`} target="_blank" className="text-[10px] text-primary underline">View Proof</a>}
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => onApprove(s._id, "approved")} className="bg-success text-white">Approve</Button>
